@@ -9,7 +9,11 @@
 ### Windows
 
 ```powershell
+# 标准安装（每步自动实时显示）
 powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/279458179/openclaw-install/main/install.ps1 | iex"
+
+# 开启详细模式（显示更多调试信息）
+$env:OPENCLAW_VERBOSE="1"; powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/279458179/openclaw-install/main/install.ps1 | iex"
 ```
 
 > 如果你使用 Git Bash 或 WSL，也可以用：
