@@ -1,0 +1,25 @@
+name: Validate Scripts
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bash script syntax (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          bash -n install.sh
+          bash -n install-openclaw.sh
+      - name: Verify powershell script syntax (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          pwsh -Command "Get-Command Install-Module -Syntax; \$null = Get-Command psedit -ErrorAction SilentlyContinue; \$PSParser = [System.Management.Automation.PSParser]; (Get-Content install.ps1 -Raw) | % { try { \$PSParser::Tokenize(\$_, [ref]\$null) | Out-Null; 'OK' } catch { \$_.Exception.Message; exit 1 } }"
