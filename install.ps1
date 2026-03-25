@@ -118,39 +118,40 @@ function Install-NodeJS {
 function Install-OpenClaw {
     Write-Info "正在安装 OpenClaw..."
 
-    # 设置 npm 镜像
-    npm config set registry $NPM_REGISTRY 2>$null
-
     # 设置代理（如有）
     if ($GitProxy) {
-        npm config set proxy $GitProxy 2>$null
-        npm config set https-proxy $GitProxy 2>$null
         $env:HTTP_PROXY = $GitProxy
         $env:HTTPS_PROXY = $GitProxy
     }
 
-    # 处理 Conda 环境干扰：临时退出 conda base
-    $condaActive = $false
+    # 处理 Conda 环境：先退出去，避免 Conda 劫持 npm
     if ($env:CONDA_PREFIX) {
-        Write-Info "检测到 Conda 环境干扰，尝试绕过..."
-        $condaActive = $true
-        # 找到 conda 的 node，如果系统和 conda 的 node 版本够新（18+），直接用 conda node 执行 npm
-        $condaNode = "$env:CONDA_PREFIX\node.exe"
-        $condaNpm  = "$env:CONDA_PREFIX\Scripts\npm.cmd"
-        if ((Test-Path $condaNode) -and (Test-Path $condaNpm)) {
-            Write-Info "使用 Conda 内置 Node 执行 npm..."
-            & $condaNpm config set registry $NPM_REGISTRY 2>$null
-            & $condaNpm i -g openclaw 2>&1 | ForEach-Object { Write-Host $_ }
-            if ($LASTEXITCODE -ne 0) {
-                Write-Err "npm 安装失败，退出码: $LASTEXITCODE"
-                exit 1
-            }
-            Write-Ok "OpenClaw 安装完成"
-            return
-        }
+        Write-Info "检测到 Conda 环境，正在退出..."
+        # 记录原 conda 信息后清理
+        $env:CONDA_PREFIX = $null
+        $env:CONDA_DEFAULT_ENV = $null
+        $env:CONDA_PYTHON_EXE = $null
+        $env:CONDA_SHLVL = $null
+        # 刷新 PATH，移除 conda 路径
+        $condaPath = $env:PATH -split ';' | Where-Object { $_ -notmatch 'conda' -and $_ -notmatch 'Anaconda3' -and $_ -notmatch 'Miniconda3' }
+        $env:PATH = $condaPath -join ';'
+        Write-Ok "已退出 Conda 环境"
     }
 
-    # 标准全局安装（系统 Node.js）
+    # 确认系统 node/npm 在 PATH 中
+    $nodeCmd = Get-Command node -ErrorAction SilentlyContinue
+    $npmCmd  = Get-Command npm  -ErrorAction SilentlyContinue
+    if (-not $nodeCmd -or -not $npmCmd) {
+        Write-Err "系统 Node.js 未找到，请先安装 Node.js 18+"
+        exit 1
+    }
+    Write-Info "使用 Node: $(node --version)"
+    Write-Info "使用 npm:  $(npm --version)"
+
+    # 设置 npm 镜像
+    npm config set registry $NPM_REGISTRY 2>$null
+
+    # 全局安装
     Write-Info "执行: npm i -g openclaw"
     $npmOut = npm i -g openclaw 2>&1
     $npmOut | ForEach-Object { Write-Host $_ }
@@ -167,21 +168,20 @@ function Install-OpenClaw {
 function Launch-OpenClaw {
     Write-Info "正在启动 OpenClaw..."
 
-    # 确定 npm 全局 bin 路径（优先 Conda 的，否则用系统 npm）
-    $openclawPath = $null
-
+    # 清理 Conda 环境变量（如果残留）
     if ($env:CONDA_PREFIX) {
-        $condaNpmRoot = "$env:CONDA_PREFIX"
-        $candidate = Join-Path $condaNpmRoot "openclaw\bin\openclaw.js"
-        if (Test-Path $candidate) { $openclawPath = $candidate }
+        $env:CONDA_PREFIX = $null
+        $env:CONDA_DEFAULT_ENV = $null
+        $condaPath = $env:PATH -split ';' | Where-Object { $_ -notmatch 'conda' -and $_ -notmatch 'Anaconda3' -and $_ -notmatch 'Miniconda3' }
+        $env:PATH = $condaPath -join ';'
     }
 
-    if (-not $openclawPath) {
-        $npmGlobal = npm root -g -q 2>$null
-        if ($npmGlobal) {
-            $candidate = Join-Path $npmGlobal "openclaw\bin\openclaw.js"
-            if (Test-Path $candidate) { $openclawPath = $candidate }
-        }
+    # 找 openclaw 安装路径
+    $openclawPath = $null
+    $npmGlobal = npm root -g -q 2>$null
+    if ($npmGlobal) {
+        $candidate = Join-Path $npmGlobal "openclaw\bin\openclaw.js"
+        if (Test-Path $candidate) { $openclawPath = $candidate }
     }
 
     Write-Host ""
