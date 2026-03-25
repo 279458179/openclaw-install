@@ -117,10 +117,10 @@ function Install-NodeJS {
 #---- 安装 OpenClaw ----
 function Install-OpenClaw {
     Write-Info "正在安装 OpenClaw..."
-    
+
     # 设置 npm 镜像
-    npm config set registry $NPM_REGISTRY --location=user 2>$null
-    
+    npm config set registry $NPM_REGISTRY 2>$null
+
     # 设置代理（如有）
     if ($GitProxy) {
         npm config set proxy $GitProxy 2>$null
@@ -128,18 +128,34 @@ function Install-OpenClaw {
         $env:HTTP_PROXY = $GitProxy
         $env:HTTPS_PROXY = $GitProxy
     }
-    
-    # 全局安装
-    npm install -g openclaw --location=user 2>&1 | Out-Null
-    
+
+    # 全局安装（标准方式）
+    Write-Info "执行: npm i -g openclaw"
+    npm i -g openclaw 2>&1 | ForEach-Object { Write-Host $_ }
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Err "npm 安装失败，退出码: $LASTEXITCODE"
+        exit 1
+    }
+
     Write-Ok "OpenClaw 安装完成"
 }
 
 #---- 启动 ----
 function Launch-OpenClaw {
     Write-Info "正在启动 OpenClaw..."
-    
-    # 尝试打开浏览器访问 onboard 界面
+
+    # 刷新 PATH（确保 npm 全局 bin 在 PATH 中）
+    $npmBin = "$env:APPDATA\npm"
+    if ($env:PATH -notlike "*$npmBin*") {
+        $env:PATH = "$env:PATH;$npmBin"
+        $userPath = [System.Environment]::GetEnvironmentVariable("PATH", "User")
+        if ($userPath -notlike "*$npmBin*") {
+            [System.Environment]::SetEnvironmentVariable("PATH", "$userPath;$npmBin", "User")
+        }
+    }
+
+    # 尝试直接调用 openclaw 命令
     $openclawCmd = Get-Command openclaw -ErrorAction SilentlyContinue
     if ($openclawCmd) {
         Write-Host ""
@@ -147,29 +163,35 @@ function Launch-OpenClaw {
         Write-Ok "OpenClaw 启动中..."
         Write-Host "========================================" -ForegroundColor Magenta
         Write-Host ""
-        
+
         try {
-            Start-Process openclaw
-            Start-Sleep -Seconds 3
-            # 尝试打开默认浏览器
+            # 在新窗口后台启动，不阻塞
+            Start-Process openclaw -WindowStyle Hidden
+            Start-Sleep -Seconds 5
             Start-Process "http://localhost:18789"
         } catch {
-            Write-Warn "启动命令失败，尝试直接启动..."
-            & openclaw 2>$null
+            Write-Warn "启动命令失败，尝试 node 直接运行..."
+            $npmGlobal = npm root -g -q
+            $openclawPath = Join-Path $npmGlobal "openclaw\bin\openclaw.js"
+            if (Test-Path $openclawPath) {
+                Start-Process node -ArgumentList $openclawPath -WindowStyle Hidden
+                Start-Sleep -Seconds 5
+                Start-Process "http://localhost:18789"
+            }
         }
     } else {
         # 尝试 npm 全局 bin 路径
         $npmGlobal = npm root -g -q
         $openclawPath = Join-Path $npmGlobal "openclaw\bin\openclaw.js"
-        
+
         if (Test-Path $openclawPath) {
             Write-Host ""
             Write-Host "========================================" -ForegroundColor Magenta
             Write-Ok "OpenClaw 启动中..."
             Write-Host "========================================" -ForegroundColor Magenta
             Write-Host ""
-            Start-Process node -ArgumentList $openclawPath
-            Start-Sleep -Seconds 3
+            Start-Process node -ArgumentList $openclawPath -WindowStyle Hidden
+            Start-Sleep -Seconds 5
             Start-Process "http://localhost:18789"
         } else {
             Write-Err "未找到 OpenClaw，请检查安装是否成功"
@@ -206,7 +228,7 @@ function Main {
     Write-Host ""
     Write-Info "如果浏览器没有自动打开，请手动访问: http://localhost:18789"
     Write-Host ""
-    Read-Host "按回车键退出"
+    Start-Sleep -Seconds 3
 }
 
 Main
