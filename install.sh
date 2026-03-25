@@ -2,15 +2,15 @@
 #============================================
 # OpenClaw 一键安装脚本 (Windows/macOS/Linux)
 # 使用方法: 
-#   Windows:    powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/codemaster-agent/openclaw-install/main/install.ps1 | iex"
-#   macOS/Linux: curl -fsSL https://raw.githubusercontent.com/codemaster-agent/openclaw-install/main/install.sh | bash
+#   Windows:    powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/279458179/openclaw-install/main/install.ps1 | iex"
+#   macOS/Linux: curl -fsSL https://raw.githubusercontent.com/279458179/openclaw-install/main/install.sh | bash
 #============================================
 
 set -e
 
 #---- 配置 ----
-GITHUB_RAW_URL="https://raw.githubusercontent.com/codemaster-agent/openclaw-install/main"
-GITHUB_RAW_URL_RAW="https://raw.githubusercontent.com/codemaster-agent/openclaw-install/main"
+GITHUB_RAW_URL="https://raw.githubusercontent.com/279458179/openclaw-install/main"
+GITHUB_RAW_URL_RAW="https://raw.githubusercontent.com/279458179/openclaw-install/main"
 NPM_REGISTRY="https://registry.npmmirror.com"
 NODE_MIRROR="https://npmmirror.com/mirrors/node"
 PYTHON_MIRROR="https://npypi.tuna.tsinghua.edu.cn/simple"

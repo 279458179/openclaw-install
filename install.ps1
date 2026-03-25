@@ -1,7 +1,7 @@
 #============================================
 # OpenClaw 一键安装脚本 (Windows PowerShell)
 # 使用方法:
-#   powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/codemaster-agent/openclaw-install/main/install.ps1 | iex"
+#   powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/279458179/openclaw-install/main/install.ps1 | iex"
 #   或者保存后以管理员运行: .\install.ps1
 #============================================
 
@@ -14,7 +14,7 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
 #---- 配置 ----
-$GITHUB_RAW = "https://raw.githubusercontent.com/codemaster-agent/openclaw-install/main"
+$GITHUB_RAW = "https://raw.githubusercontent.com/279458179/openclaw-install/main"
 $NPM_REGISTRY = "https://registry.npmmirror.com"
 $NODE_MIRROR = "https://npmmirror.com/mirrors/node"
 

@@ -4,13 +4,13 @@
 # 
 # 使用方法:
 #   Windows (PowerShell):
-#     powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/codemaster-agent/openclaw-install/main/install.ps1 | iex"
+#     powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/279458179/openclaw-install/main/install.ps1 | iex"
 #   
 #   macOS / Linux (Bash):
-#     curl -fsSL https://raw.githubusercontent.com/codemaster-agent/openclaw-install/main/install.sh | bash
+#     curl -fsSL https://raw.githubusercontent.com/279458179/openclaw-install/main/install.sh | bash
 #
 #   或者下载入口脚本后运行:
-#     curl -fsSL https://raw.githubusercontent.com/codemaster-agent/openclaw-install/main/install-openclaw.sh | bash
+#     curl -fsSL https://raw.githubusercontent.com/279458179/openclaw-install/main/install-openclaw.sh | bash
 #============================================
 
 set -e
@@ -41,7 +41,7 @@ if [[ "$OS_TYPE" == "Darwin" ]] || [[ "$OS_TYPE" == "Linux" ]]; then
     show_banner
     
     # 下载 Bash 脚本并执行
-    SCRIPT_URL="https://raw.githubusercontent.com/codemaster-agent/openclaw-install/main/install.sh"
+    SCRIPT_URL="https://raw.githubusercontent.com/279458179/openclaw-install/main/install.sh"
     
     echo -e "${CYAN}[INFO]${NC} 检测到系统: $OS_TYPE"
     echo -e "${CYAN}[INFO]${NC} 正在下载安装脚本..."
@@ -67,7 +67,7 @@ elif [[ "$OS_TYPE" == *"MINGW"* ]] || [[ "$OS_TYPE" == *"CYGWIN"* ]] || [[ "$OS_
     echo -e "${CYAN}[INFO]${NC} 正在下载安装脚本..."
     
     # 使用 PowerShell 下载并执行
-    PS_SCRIPT_URL="https://raw.githubusercontent.com/codemaster-agent/openclaw-install/main/install.ps1"
+    PS_SCRIPT_URL="https://raw.githubusercontent.com/279458179/openclaw-install/main/install.ps1"
     
     powershell -ExecutionPolicy Bypass -Command "irm $PS_SCRIPT_URL | iex"
 

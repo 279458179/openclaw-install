@@ -9,18 +9,18 @@
 ### Windows
 
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/codemaster-agent/openclaw-install/main/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/279458179/openclaw-install/main/install.ps1 | iex"
 ```
 
 > 如果你使用 Git Bash 或 WSL，也可以用：
 > ```bash
-> curl -fsSL https://raw.githubusercontent.com/codemaster-agent/openclaw-install/main/install.sh | bash
+> curl -fsSL https://raw.githubusercontent.com/279458179/openclaw-install/main/install.sh | bash
 > ```
 
 ### macOS / Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codemaster-agent/openclaw-install/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/279458179/openclaw-install/main/install.sh | bash
 ```
 
 ---
@@ -57,14 +57,14 @@ curl -fsSL https://raw.githubusercontent.com/codemaster-agent/openclaw-install/m
 ### Windows (PowerShell)
 ```powershell
 $GitProxy = "http://127.0.0.1:7890"
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/codemaster-agent/openclaw-install/main/install.ps1 | iex" -GitProxy $GitProxy
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/279458179/openclaw-install/main/install.ps1 | iex" -GitProxy $GitProxy
 ```
 
 ### macOS / Linux (Bash)
 ```bash
 export HTTP_PROXY="http://127.0.0.1:7890"
 export HTTPS_PROXY="http://127.0.0.1:7890"
-curl -fsSL https://raw.githubusercontent.com/codemaster-agent/openclaw-install/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/279458179/openclaw-install/main/install.sh | bash
 ```
 
 ---
