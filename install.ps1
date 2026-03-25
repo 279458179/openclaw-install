@@ -7,7 +7,8 @@
 
 param(
     [string]$GitProxy = "",      # 可选: http://127.0.0.1:7890
-    [switch]$SkipNodeJS          # 跳过 Node.js 安装（如果已安装）
+    [switch]$SkipNodeJS,         # 跳过 Node.js 安装（如果已安装）
+    [switch]$Verbose             # 详细输出模式
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,10 +20,16 @@ $NPM_REGISTRY = "https://registry.npmmirror.com"
 $NODE_MIRROR = "https://npmmirror.com/mirrors/node"
 
 #---- 颜色 ----
+$VerboseFlag = $Verbose -or ($env:OPENCLAW_VERBOSE -eq "1")
 function Write-Info  ($msg) { Write-Host "[INFO] $msg" -ForegroundColor Cyan }
 function Write-Ok    ($msg) { Write-Host "[OK]   $msg" -ForegroundColor Green }
 function Write-Warn  ($msg) { Write-Host "[WARN] $msg" -ForegroundColor Yellow }
 function Write-Err   ($msg) { Write-Host "[ERROR] $msg" -ForegroundColor Red }
+function Log-Step    ($step, $detail) {
+    $ts = Get-Date -Format "HH:mm:ss"
+    Write-Host "[$ts] $step" -ForegroundColor DarkGray
+    if ($VerboseFlag -and $detail) { Write-Host "       $detail" -ForegroundColor Gray }
+}
 
 #---- 管理员检查 ----
 function Test-Admin {
@@ -38,6 +45,7 @@ function Get-WinGet {
 
 #---- 安装 Git ----
 function Install-Git {
+    Log-Step "Step 1/4 - 检查 Git"
     if (Get-Command git -ErrorAction SilentlyContinue) {
         $ver = git --version
         Write-Ok "Git 已安装 ($ver)"
@@ -77,6 +85,7 @@ function Install-Git {
 
 #---- 安装 Node.js ----
 function Install-NodeJS {
+    Log-Step "Step 2/4 - 检查 Node.js"
     if (Get-Command node -ErrorAction SilentlyContinue) {
         $ver = node --version
         Write-Ok "Node.js 已安装 (v$ver)"
@@ -116,6 +125,7 @@ function Install-NodeJS {
 
 #---- 安装 OpenClaw ----
 function Install-OpenClaw {
+    Log-Step "Step 3/4 - 安装 OpenClaw"
     Write-Info "正在安装 OpenClaw..."
 
     # 设置代理（如有）
@@ -127,12 +137,10 @@ function Install-OpenClaw {
     # 处理 Conda 环境：先退出去，避免 Conda 劫持 npm
     if ($env:CONDA_PREFIX) {
         Write-Info "检测到 Conda 环境，正在退出..."
-        # 记录原 conda 信息后清理
         $env:CONDA_PREFIX = $null
         $env:CONDA_DEFAULT_ENV = $null
         $env:CONDA_PYTHON_EXE = $null
         $env:CONDA_SHLVL = $null
-        # 刷新 PATH，移除 conda 路径
         $condaPath = $env:PATH -split ';' | Where-Object { $_ -notmatch 'conda' -and $_ -notmatch 'Anaconda3' -and $_ -notmatch 'Miniconda3' }
         $env:PATH = $condaPath -join ';'
         Write-Ok "已退出 Conda 环境"
@@ -145,16 +153,18 @@ function Install-OpenClaw {
         Write-Err "系统 Node.js 未找到，请先安装 Node.js 18+"
         exit 1
     }
-    Write-Info "使用 Node: $(node --version)"
-    Write-Info "使用 npm:  $(npm --version)"
+    Write-Info "Node: $(node --version)  npm: $(npm --version)"
 
     # 设置 npm 镜像
+    Log-Step "Step 3/4 - 设置 npm 镜像"
     npm config set registry $NPM_REGISTRY 2>$null
+    Write-Info "镜像: $NPM_REGISTRY"
 
-    # 全局安装
-    Write-Info "执行: npm i -g openclaw"
+    # 全局安装 - 实时输出每行
+    Log-Step "Step 3/4 - 执行 npm i -g openclaw"
+    Write-Info "安装中...（实时显示输出）"
     $npmOut = npm i -g openclaw 2>&1
-    $npmOut | ForEach-Object { Write-Host $_ }
+    $npmOut | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
     if ($LASTEXITCODE -ne 0) {
         Write-Err "npm 安装失败，退出码: $LASTEXITCODE"
         Write-Err "npm 输出: $npmOut"
@@ -166,6 +176,7 @@ function Install-OpenClaw {
 
 #---- 启动 ----
 function Launch-OpenClaw {
+    Log-Step "Step 4/4 - 启动 OpenClaw"
     Write-Info "正在启动 OpenClaw..."
 
     # 清理 Conda 环境变量（如果残留）
@@ -209,24 +220,34 @@ function Launch-OpenClaw {
 
 #---- 主流程 ----
 function Main {
+    $startTime = Get-Date
+    $ts = { param($t) $t.ToString("HH:mm:ss") }
+
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Magenta
     Write-Host "  OpenClaw 一键安装脚本 (Windows)" -ForegroundColor Cyan
-    Write-Host "  支持: Windows 10/11" -ForegroundColor Gray
+    Write-Host "  步骤: Git → Node.js → OpenClaw → 启动" -ForegroundColor Gray
+    Write-Host "  详细模式: $(if($VerboseFlag){'ON'}else{'OFF'})  (加 -Verbose 开启)" -ForegroundColor DarkGray
     Write-Host "========================================" -ForegroundColor Magenta
     Write-Host ""
-    
+    Write-Host "[$($ts.Invoke($startTime))] 开始安装..." -ForegroundColor DarkGray
+    Write-Host ""
+
     $isAdmin = Test-Admin
     if (-not $isAdmin) {
         Write-Warn "建议以管理员身份运行，以安装 Git 和 Node.js 到系统路径"
         Write-Info "继续执行（非管理员模式，部分功能可能受限）..."
         Write-Host ""
     }
-    
+
     Install-Git
     Install-NodeJS
     Install-OpenClaw
     Launch-OpenClaw
+
+    $elapsed = [math]::Round(((Get-Date) - $startTime).TotalSeconds, 1)
+    Write-Host ""
+    Write-Host "[$($ts.Invoke((Get-Date)))] 安装完成！耗时 ${elapsed}s" -ForegroundColor DarkGray
     
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Green
