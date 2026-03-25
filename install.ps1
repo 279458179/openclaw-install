@@ -129,12 +129,34 @@ function Install-OpenClaw {
         $env:HTTPS_PROXY = $GitProxy
     }
 
-    # 全局安装（标准方式）
-    Write-Info "执行: npm i -g openclaw"
-    npm i -g openclaw 2>&1 | ForEach-Object { Write-Host $_ }
+    # 处理 Conda 环境干扰：临时退出 conda base
+    $condaActive = $false
+    if ($env:CONDA_PREFIX) {
+        Write-Info "检测到 Conda 环境干扰，尝试绕过..."
+        $condaActive = $true
+        # 找到 conda 的 node，如果系统和 conda 的 node 版本够新（18+），直接用 conda node 执行 npm
+        $condaNode = "$env:CONDA_PREFIX\node.exe"
+        $condaNpm  = "$env:CONDA_PREFIX\Scripts\npm.cmd"
+        if ((Test-Path $condaNode) -and (Test-Path $condaNpm)) {
+            Write-Info "使用 Conda 内置 Node 执行 npm..."
+            & $condaNpm config set registry $NPM_REGISTRY 2>$null
+            & $condaNpm i -g openclaw 2>&1 | ForEach-Object { Write-Host $_ }
+            if ($LASTEXITCODE -ne 0) {
+                Write-Err "npm 安装失败，退出码: $LASTEXITCODE"
+                exit 1
+            }
+            Write-Ok "OpenClaw 安装完成"
+            return
+        }
+    }
 
+    # 标准全局安装（系统 Node.js）
+    Write-Info "执行: npm i -g openclaw"
+    $npmOut = npm i -g openclaw 2>&1
+    $npmOut | ForEach-Object { Write-Host $_ }
     if ($LASTEXITCODE -ne 0) {
         Write-Err "npm 安装失败，退出码: $LASTEXITCODE"
+        Write-Err "npm 输出: $npmOut"
         exit 1
     }
 
@@ -145,58 +167,43 @@ function Install-OpenClaw {
 function Launch-OpenClaw {
     Write-Info "正在启动 OpenClaw..."
 
-    # 刷新 PATH（确保 npm 全局 bin 在 PATH 中）
-    $npmBin = "$env:APPDATA\npm"
-    if ($env:PATH -notlike "*$npmBin*") {
-        $env:PATH = "$env:PATH;$npmBin"
-        $userPath = [System.Environment]::GetEnvironmentVariable("PATH", "User")
-        if ($userPath -notlike "*$npmBin*") {
-            [System.Environment]::SetEnvironmentVariable("PATH", "$userPath;$npmBin", "User")
+    # 确定 npm 全局 bin 路径（优先 Conda 的，否则用系统 npm）
+    $openclawPath = $null
+
+    if ($env:CONDA_PREFIX) {
+        $condaNpmRoot = "$env:CONDA_PREFIX"
+        $candidate = Join-Path $condaNpmRoot "openclaw\bin\openclaw.js"
+        if (Test-Path $candidate) { $openclawPath = $candidate }
+    }
+
+    if (-not $openclawPath) {
+        $npmGlobal = npm root -g -q 2>$null
+        if ($npmGlobal) {
+            $candidate = Join-Path $npmGlobal "openclaw\bin\openclaw.js"
+            if (Test-Path $candidate) { $openclawPath = $candidate }
         }
     }
 
-    # 尝试直接调用 openclaw 命令
-    $openclawCmd = Get-Command openclaw -ErrorAction SilentlyContinue
-    if ($openclawCmd) {
-        Write-Host ""
-        Write-Host "========================================" -ForegroundColor Magenta
-        Write-Ok "OpenClaw 启动中..."
-        Write-Host "========================================" -ForegroundColor Magenta
-        Write-Host ""
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Magenta
+    Write-Ok "OpenClaw 启动中..."
+    Write-Host "========================================" -ForegroundColor Magenta
+    Write-Host ""
 
-        try {
-            # 在新窗口后台启动，不阻塞
-            Start-Process openclaw -WindowStyle Hidden
-            Start-Sleep -Seconds 5
-            Start-Process "http://localhost:18789"
-        } catch {
-            Write-Warn "启动命令失败，尝试 node 直接运行..."
-            $npmGlobal = npm root -g -q
-            $openclawPath = Join-Path $npmGlobal "openclaw\bin\openclaw.js"
-            if (Test-Path $openclawPath) {
-                Start-Process node -ArgumentList $openclawPath -WindowStyle Hidden
-                Start-Sleep -Seconds 5
-                Start-Process "http://localhost:18789"
-            }
-        }
-    } else {
-        # 尝试 npm 全局 bin 路径
-        $npmGlobal = npm root -g -q
-        $openclawPath = Join-Path $npmGlobal "openclaw\bin\openclaw.js"
-
-        if (Test-Path $openclawPath) {
-            Write-Host ""
-            Write-Host "========================================" -ForegroundColor Magenta
-            Write-Ok "OpenClaw 启动中..."
-            Write-Host "========================================" -ForegroundColor Magenta
-            Write-Host ""
+    try {
+        if ($openclawPath) {
+            Write-Info "启动脚本: $openclawPath"
             Start-Process node -ArgumentList $openclawPath -WindowStyle Hidden
-            Start-Sleep -Seconds 5
-            Start-Process "http://localhost:18789"
         } else {
-            Write-Err "未找到 OpenClaw，请检查安装是否成功"
-            exit 1
+            Write-Info "直接执行 openclaw 命令"
+            Start-Process openclaw -WindowStyle Hidden
         }
+        Start-Sleep -Seconds 5
+        Start-Process "http://localhost:18789"
+    } catch {
+        Write-Err "启动失败: $_"
+        Write-Info "请手动运行: openclaw"
+        Write-Info "或访问: http://localhost:18789"
     }
 }
 
